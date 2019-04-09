@@ -46,24 +46,14 @@ int main()
 			for (int j = 0; j < 7; j++)
 			{
 				if (BodyArr[i]._keyBodyDts[j][0] != NULL)
+				{
 					circle(videoDisplay, BodyArr[i]._keyBodyDts[j][0]->pos, 4, Scalar(0, 255, 0),-1);
-			
+					putText(videoDisplay, std::to_string(j), Point(BodyArr[i]._keyBodyDts[j][0]->pos.x + 5, BodyArr[i]._keyBodyDts[j][0]->pos.y), CV_FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 255, 255));
+				}
 			}
 
-			stringstream s;
-			s << BodyArr[i]._index;
-
-
-			putText(videoDisplay, s.str(), Point(BodyArr[i]._heart.x + 5, BodyArr[i]._heart.y), CV_FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 0, 255));
+			putText(videoDisplay, std::to_string(BodyArr[i]._index), Point(BodyArr[i]._heart.x + 5, BodyArr[i]._heart.y), CV_FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 0, 255));
 			cout << BodyArr[i].m_fTimes << endl;
-		}
-
-		std::vector<TornadoData> TornadoArr;
-		test.GetTornadoData(TornadoArr);
-
-		for (int i = 0; i < TornadoArr.size(); i++)
-		{
-			circle(videoDisplay,TornadoArr[i]._pos, 4, Scalar(0, 0, 255), -1);
 		}
 
 		cv::imshow("test",videoDisplay);
