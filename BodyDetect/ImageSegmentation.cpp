@@ -15,8 +15,8 @@ cv::Mat cutGreenScreen(cv::Mat& src,int cutTop,int cutBottom)
 
 	for (int i = 0; i < srcHSV.rows; i++)
 	{
-		cv::Vec3b* HSVpixel = srcHSV.ptr<cv::Vec3b>(i);
-		uchar* GrayPixel = srcThreshold.ptr<uchar>(i);
+		auto HSVpixel = srcHSV.ptr<cv::Vec3b>(i);
+		auto GrayPixel = srcThreshold.ptr<uchar>(i);
 		for (int j = 0; j < srcHSV.cols; j++)
 		{
 			if (HSVpixel[j][0] > 45 && HSVpixel[j][0] < 137 && HSVpixel[j][1] > 43 && HSVpixel[j][2] > 50)
@@ -57,8 +57,8 @@ void RemoveSmallRegion(cv::Mat& Src, cv::Mat& Dst, int AreaLimit, int CheckMode,
 		cout << "Mode: 去除小区域. ";
 		for (int i = 0; i < Src.rows; ++i)
 		{
-			uchar* iData = Src.ptr<uchar>(i);
-			uchar* iLabel = Pointlabel.ptr<uchar>(i);
+			auto iData = Src.ptr<uchar>(i);
+			auto iLabel = Pointlabel.ptr<uchar>(i);
 			for (int j = 0; j < Src.cols; ++j)
 			{
 				if (iData[j] < 10)
@@ -73,8 +73,8 @@ void RemoveSmallRegion(cv::Mat& Src, cv::Mat& Dst, int AreaLimit, int CheckMode,
 		cout << "Mode: 去除孔洞. ";
 		for (int i = 0; i < Src.rows; ++i)
 		{
-			uchar* iData = Src.ptr<uchar>(i);
-			uchar* iLabel = Pointlabel.ptr<uchar>(i);
+			auto* iData = Src.ptr<uchar>(i);
+			auto iLabel = Pointlabel.ptr<uchar>(i);
 			for (int j = 0; j < Src.cols; ++j)
 			{
 				if (iData[j] > 10)
@@ -133,9 +133,9 @@ void RemoveSmallRegion(cv::Mat& Src, cv::Mat& Dst, int AreaLimit, int CheckMode,
 					}
 
 				}
-				if (GrowBuffer.size()>AreaLimit) CheckResult = 2;                 //判断结果（是否超出限定的大小），1为未超出，2为超出  
+				if (GrowBuffer.size() > AreaLimit) CheckResult = 2;                 //判断结果（是否超出限定的大小），1为未超出，2为超出  
 				else { CheckResult = 1;   RemoveCount++; }
-				for (int z = 0; z<GrowBuffer.size(); z++)                         //更新Label记录  
+				for (int z = 0; z < GrowBuffer.size(); z++)                         //更新Label记录  
 				{
 					CurrX = GrowBuffer.at(z).x;
 					CurrY = GrowBuffer.at(z).y;
@@ -152,9 +152,9 @@ void RemoveSmallRegion(cv::Mat& Src, cv::Mat& Dst, int AreaLimit, int CheckMode,
 	//开始反转面积过小的区域  
 	for (int i = 0; i < Src.rows; ++i)
 	{
-		uchar* iData = Src.ptr<uchar>(i);
-		uchar* iDstData = Dst.ptr<uchar>(i);
-		uchar* iLabel = Pointlabel.ptr<uchar>(i);
+		auto* iData = Src.ptr<uchar>(i);
+		auto* iDstData = Dst.ptr<uchar>(i);
+		const auto iLabel = Pointlabel.ptr<uchar>(i);
 		for (int j = 0; j < Src.cols; ++j)
 		{
 			if (iLabel[j] == 2)
@@ -304,10 +304,7 @@ cv::Mat thinImage(const cv::Mat & src, const int maxIterations)
 		{
 			break;
 		}
-		else
-		{
-			mFlag.clear();//将mFlag清空  
-		}
+		mFlag.clear();//将mFlag清空  
 	}
 	return dst;
 }

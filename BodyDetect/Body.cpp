@@ -7,16 +7,14 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 {
 	//读入已二值化并裁剪过的黑白图
 
-	DWORD startTime = GetCurrentTime();
+	const DWORD startTime = GetCurrentTime();
 	cv::Mat imgCopy;
 	img.copyTo(imgCopy);
 	vector<vector<cv::Point> > contours;
 	findContours(imgCopy, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 	std::sort(contours.begin(), contours.end(), sortCountersArea);
 
-	//删除面积过小的区域
-	vector<vector<cv::Point>>::iterator it;
-	for (it = contours.begin(); it != contours.end();)
+	for (auto it = contours.begin(); it != contours.end();)
 	{
 		if (contourArea(*it) < 1000)
 		{
@@ -24,11 +22,11 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 		}
 		else
 		{
-			it++;
+			++it;
 		}
 	}
 
-	if (contours.size() > 0)
+	if (!contours.empty())
 	{
 
 		vector<skeleton> PersonSkeleton;	//每个人对应的骨架
@@ -43,20 +41,20 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 
 			resize(cutFrameRectCopy, cutFrameRectCopy, cv::Size(150.0*PersonRect.width / PersonRect.height, 150.0));
 
-			int Area = contourArea(contours[i]) * pow((150.0 / PersonRect.height), 2);
-			int PersonNumber = min(Area / 4000.0, cutFrameRectCopy.size().width / 52.5);
+			int area = contourArea(contours[i]) * pow((150.0 / PersonRect.height), 2);
+			int personNumber = min(area / 4000.0, cutFrameRectCopy.size().width / 52.5);
 
 
 
-			if (PersonNumber >= 2)
+			if (personNumber >= 2)
 			{
 
 				//表示当前Rect人数可能多于1人，需要裁剪
-				int PersonWidth = cutFrameRectCopy.size().width / PersonNumber;	//得到每个人的大概宽度
+				int PersonWidth = cutFrameRectCopy.size().width / personNumber;	//得到每个人的大概宽度
 
 
 				vector<cv::Point> heightPoint;	//每个人的重心
-				for (int j = 0; j < PersonNumber; j++)
+				for (int j = 0; j < personNumber; j++)
 				{
 					//处理每幅图
 					cv::Rect cutPersonRect(j*PersonWidth, 0, PersonWidth, cutFrameRectCopy.size().height);
@@ -76,7 +74,7 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 					{
 						//存储每张图片的重心点
 						cv::Point mc = cv::Point(mu.m10 / mu.m00, mu.m01 / mu.m00);
-						heightPoint.push_back(cv::Point(j*PersonWidth + mc.x, mc.y));
+						heightPoint.emplace_back(j*PersonWidth + mc.x, mc.y);
 						//circle(cutFrameRectCopy, Point(j*PersonWidth + mc.x, mc.y), 2, Scalar(0, 0, 0));
 					}
 				}
@@ -110,14 +108,6 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 					}
 					//找到白色最少的地方，切割
 					cutEdge.push_back(cutX);
-
-					/*
-					for (int l = 0; l < cutFrameRectCopy.size().height; l++)
-					{
-					cutFrameRectCopy.at<uchar>(l, cutX) = 0;
-					}
-					imshow("test", cutFrameRectCopy);
-					*/
 				}
 				cutEdge.push_back(cutFrameRectCopy.size().width - 1);
 				//所有边已被存储，开始分割图像
@@ -177,7 +167,7 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 						vector<cv::Point2f> endpoints = skeletonEndPoints(PersonTempThin);
 						vector<cv::Point2f> branchpoints = skeletonBranchPoints(PersonTempThin, 4, 5, 4);
 
-						skeleton skeletonData = FromEdgePoints(endpoints, branchpoints, mc, PersonTempMat, PersonTempContours[0]);
+						skeleton skeletonData = FromEdgePoints(endpoints, branchpoints, mc, PersonTempMat);
 
 						//对skeletonData进行处理，换算到全局单位
 						if (skeletonData._heart != cv::Point2f(0, 0))
@@ -192,36 +182,20 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 
 						//将轮廓映射到全画面
 						vector<cv::Point> skeletonContours;
-						for (int k = 0; k < PersonTempContours[0].size(); k++)
+						for (auto& k : PersonTempContours[0])
 						{
 							cv::Point ContoursPointTemp;
-							ContoursPointTemp = cv::Point(round((PersonTempContours[0][k].x + PersonTempRect.x) / (150.0 / PersonRect.height) + PersonRect.x), round((PersonTempContours[0][k].y + PersonTempRect.y) / (150.0 / PersonRect.height) + PersonRect.y));
+							ContoursPointTemp = cv::Point(round((k.x + PersonTempRect.x) / (150.0 / PersonRect.height) + PersonRect.x), round((
+								                              k.y + PersonTempRect.y) / (150.0 / PersonRect.height) + PersonRect.y));
 							skeletonContours.push_back(ContoursPointTemp);
 						}
 
 						PersonTempSkeleton.skeletonContours = skeletonContours;
 
 						PersonSkeleton.push_back(PersonTempSkeleton);
-
-						/*
-						circle(videoDisplay, PersonTempSkeleton.Center, 4, Scalar(255, 0, 255), -1);
-
-						circle(videoDisplay, PersonTempSkeleton.head, 4, Scalar(255, 0, 0), -1);
-						circle(videoDisplay, PersonTempSkeleton.lefthand, 4, Scalar(0, 255, 0), -1);
-						circle(videoDisplay, PersonTempSkeleton.righthand, 4, Scalar(0, 0, 255), -1);
-
-						circle(videoDisplay, PersonTempSkeleton.chest, 4, Scalar(256, 128, 0), -1);
-						circle(videoDisplay, PersonTempSkeleton.hip, 4, Scalar(0, 128, 256), -1);
-
-						circle(videoDisplay, PersonTempSkeleton.leftfoot, 4, Scalar(255, 255, 0), -1);
-						circle(videoDisplay, PersonTempSkeleton.rightfoot, 4, Scalar(0, 255, 255), -1);
-						*/
 					}
 
 				}
-
-
-
 			}
 			else
 			{
@@ -261,10 +235,6 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 					for (int i = 0; i < PersonTempThin.size().height; i++)
 					{
 						PersonTempThin.at<uchar>(cv::Point(0, i)) = 0;
-					}
-
-					for (int i = 0; i < PersonTempThin.size().height; i++)
-					{
 						PersonTempThin.at<uchar>(cv::Point(PersonTempThin.size().width - 1, i)) = 0;
 					}
 
@@ -274,7 +244,7 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 					vector<cv::Point2f> branchpoints = skeletonBranchPoints(PersonTempThin, 4, 5, 4);
 
 
-					skeleton skeletonData = FromEdgePoints(endpoints, branchpoints, mc, PersonTempMat, PersonTempContours[0]);
+					skeleton skeletonData = FromEdgePoints(endpoints, branchpoints, mc, PersonTempMat);
 
 					//对skeletonData进行处理，换算到全局单位
 					if (skeletonData._heart != cv::Point2f(0, 0))
@@ -288,115 +258,97 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 					}
 
 					vector<cv::Point> skeletonContours;
-					for (int k = 0; k < PersonTempContours[0].size(); k++)
+					for (auto& k : PersonTempContours[0])
 					{
 						cv::Point ContoursPointTemp;
-						ContoursPointTemp = cv::Point(round((PersonTempContours[0][k].x) / (150.0 / PersonRect.height) + PersonRect.x), round((PersonTempContours[0][k].y) / (150.0 / PersonRect.height) + PersonRect.y));
+						ContoursPointTemp = cv::Point(round((k.x) / (150.0 / PersonRect.height) + PersonRect.x), round((
+							                              k.y) / (150.0 / PersonRect.height) + PersonRect.y));
 						skeletonContours.push_back(ContoursPointTemp);
 					}
 
 					PersonTempSkeleton.skeletonContours = skeletonContours;
 					PersonSkeleton.push_back(PersonTempSkeleton);
-
-
-
-					/*
-					circle(videoDisplay, PersonTempSkeleton.Center, 4, Scalar(255, 0, 255), -1);
-
-					circle(videoDisplay, PersonTempSkeleton.head, 4, Scalar(255, 0, 0), -1);
-					circle(videoDisplay, PersonTempSkeleton.lefthand, 4, Scalar(0, 255, 0), -1);
-					circle(videoDisplay, PersonTempSkeleton.righthand, 4, Scalar(0, 0, 255), -1);
-
-					circle(videoDisplay, PersonTempSkeleton.chest, 4, Scalar(256, 128, 0), -1);
-					circle(videoDisplay, PersonTempSkeleton.hip, 4, Scalar(0, 128, 256), -1);
-
-					circle(videoDisplay, PersonTempSkeleton.leftfoot, 4, Scalar(255, 255, 0), -1);
-					circle(videoDisplay, PersonTempSkeleton.rightfoot, 4, Scalar(0, 255, 255), -1);
-					*/
 				}
-				//PersonMat.push_back(cutFrameRectCopy);
 			}
-			std::cout << i << ":" << Area << " " << cutFrameRectCopy.size().width << endl;
+			std::cout << i << ":" << area << " " << cutFrameRectCopy.size().width << endl;
 		}
 
 		//完成识别，开始对当前骨架分配Index
 		vector<PersonData> oldPersonInformation = PersonInformation;
 		vector<skeleton> tempPersonSkeleton = PersonSkeleton;
-		for (int i = 0; i < PersonSkeleton.size(); i++)
+		for (auto& i : PersonSkeleton)
 		{
 			PersonData ClosestPerson;
 			double MinCenterDistance = 999;
-			for (int j = 0; j < oldPersonInformation.size(); j++)
+			for (auto& j : oldPersonInformation)
 			{
-				double CenterDistance = sqrt(pow(PersonSkeleton[i]._heart.x - oldPersonInformation[j].skeletonData._heart.x, 2) + pow(PersonSkeleton[i]._heart.y - oldPersonInformation[j].skeletonData._heart.y, 2));
+				const double CenterDistance = sqrt(pow(i._heart.x - j.skeletonData._heart.x, 2) + pow(i._heart.y - j.skeletonData._heart.y, 2));
 				if (CenterDistance < MinCenterDistance && CenterDistance < 100)
 				{
 					MinCenterDistance = CenterDistance;
-					ClosestPerson = oldPersonInformation[j];
+					ClosestPerson = j;
 				}
 			}
 
 			if (ClosestPerson.index != -1)
 			{
 				//表示找到了最近的那个人
-				vector<PersonData>::iterator itold = find(oldPersonInformation.begin(), oldPersonInformation.end(), ClosestPerson);
-				vector<PersonData>::iterator itnow = find(PersonInformation.begin(), PersonInformation.end(), ClosestPerson);
+				auto itold = find(oldPersonInformation.begin(), oldPersonInformation.end(), ClosestPerson);
+				auto itnow = find(PersonInformation.begin(), PersonInformation.end(), ClosestPerson);
 				if (itold != oldPersonInformation.end())
 				{
 					if (itnow->oldSskeletonData.size() < 10)
 					{
 						itnow->oldSskeletonData.push_front(itnow->skeletonData);
-						itnow->skeletonData = PersonSkeleton[i];
+						itnow->skeletonData = i;
 
 					}
 					else
 					{
 						itnow->oldSskeletonData.pop_back();
 						itnow->oldSskeletonData.push_front(itnow->skeletonData);
-						itnow->skeletonData = PersonSkeleton[i];
+						itnow->skeletonData = i;
 					}
 
-					vector<skeleton>::iterator it = find(tempPersonSkeleton.begin(), tempPersonSkeleton.end(), PersonSkeleton[i]);
-					if (it != tempPersonSkeleton.end())
+					auto iterator = find(tempPersonSkeleton.begin(), tempPersonSkeleton.end(), i);
+					if (iterator != tempPersonSkeleton.end())
 					{
-						tempPersonSkeleton.erase(it);
-						int a = 0;
+						tempPersonSkeleton.erase(iterator);
 					}
 					oldPersonInformation.erase(itold);
-					int a = 0;
 				}
 			}
 		}
 
 
-		if (oldPersonInformation.size() > 0)
+		if (!oldPersonInformation.empty())
 		{
 			//有人没分配到新动作，可能已经下场
 			//将其从队列中删掉
-			for (int i = 0; i < oldPersonInformation.size(); i++)
+			for (const auto& i : oldPersonInformation)
 			{
-				vector<PersonData>::iterator it = find(PersonInformation.begin(), PersonInformation.end(), oldPersonInformation[i]);
-				if (it != PersonInformation.end())
+				auto iterator = find(PersonInformation.begin(), PersonInformation.end(), i);
+				if (iterator != PersonInformation.end())
 				{
-					PersonInformation.erase(it);
+					PersonInformation.erase(iterator);
 				}
 			}
 		}
 
 
-		if (tempPersonSkeleton.size() > 0)
+		if (!tempPersonSkeleton.empty())
 		{
 			//表示还有骨架没有分配完，可能有人新入场
 			PersonData tempPersonData;
-			for (int i = 0; i < tempPersonSkeleton.size(); i++)
+			for (const auto& i : tempPersonSkeleton)
 			{
 				tempPersonData.index = indexNum;
-				tempPersonData.skeletonData = tempPersonSkeleton[i];
+				tempPersonData.skeletonData = i;
 				indexNum++;
 				//防止经过的人太多
 				if (indexNum > 30000)
 					indexNum = 0;
-				DWORD endTime = GetCurrentTime();
+				const DWORD endTime = GetCurrentTime();
 				tempPersonData.m_fTimes = (endTime - startTime) / 1000.0;
 				PersonInformation.push_back(tempPersonData);
 			}
@@ -412,30 +364,29 @@ bool CJcCalBody::recognizeImage(cv::Mat& img)
 
 void  CJcCalBody::GetBodyData(std::vector<BodyData> &BodyArr)
 {
-	jcBlockData* BlockDataTemp;
 	std::vector<BodyData> BodyArrTemp;
-	if (PersonInformation.size() > 0)
+	if (!PersonInformation.empty())
 	{
-		for (int i = 0; i < PersonInformation.size(); i++)
+		for (auto& i : PersonInformation)
 		{
 			BodyData Temp;
-			Temp.m_contours = PersonInformation[i].skeletonData.skeletonContours;
-			Temp.m_fTimes = PersonInformation[i].m_fTimes;
-			Temp._heart = PersonInformation[i].skeletonData._heart;
-			Temp._index = PersonInformation[i].index;
+			Temp.m_contours = i.skeletonData.skeletonContours;
+			Temp.m_fTimes = i.m_fTimes;
+			Temp._heart = i.skeletonData._heart;
+			Temp._index = i.index;
 
 			for (int j = BodyData_head; j < BodyData_len; j++)
 			{
-				BlockDataTemp = new jcBlockData();
-				if (PersonInformation[i].skeletonData.bodyPoint[j] != cv::Point2f(0, 0))
+				shared_ptr<jcBlockData> BlockDataTemp = std::make_shared<jcBlockData>();
+				if (i.skeletonData.bodyPoint[j] != cv::Point2f(0, 0))
 				{
 
-					BlockDataTemp->pos = PersonInformation[i].skeletonData.bodyPoint[j];
+					BlockDataTemp->pos = i.skeletonData.bodyPoint[j];
 
 					if (j < 3)
 					{
-						BlockDataTemp->dir = cv::Point(PersonInformation[i].skeletonData.bodyPoint[j].x - PersonInformation[i].skeletonData.bodyPoint[BodyData_chest].x,
-							PersonInformation[i].skeletonData.bodyPoint[j].y - PersonInformation[i].skeletonData.bodyPoint[BodyData_chest].y);
+						BlockDataTemp->dir = cv::Point(i.skeletonData.bodyPoint[j].x - i.skeletonData.bodyPoint[BodyData_chest].x,
+						                               i.skeletonData.bodyPoint[j].y - i.skeletonData.bodyPoint[BodyData_chest].y);
 					}
 					else
 					{
@@ -445,7 +396,7 @@ void  CJcCalBody::GetBodyData(std::vector<BodyData> &BodyArr)
 				}
 				else
 				{
-					Temp._keyBodyDts[j].push_back(NULL);
+					Temp._keyBodyDts[j].push_back(nullptr);
 				}
 			}
 			BodyArrTemp.push_back(Temp);

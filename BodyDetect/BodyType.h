@@ -23,7 +23,7 @@ struct skeleton
 {
 	cv::Point2f bodyPoint[BodyData_len] = { cv::Point2f(0, 0) };
 	cv::Point2f _heart = cv::Point2f(0, 0);
-	bool operator == (const skeleton &i);
+	bool operator == (const skeleton &i) const;
 	vector<cv::Point> skeletonContours;
 };
 
@@ -33,29 +33,24 @@ struct PersonData
 	float m_fTimes;//识别的时间
 	skeleton skeletonData;
 	deque<skeleton> oldSskeletonData;
-	bool operator == (const PersonData &i);
+	bool operator == (const PersonData &i) const;
 };
 
 
 
-struct jcBlockData
+class jcBlockData
 {
 public:
 	cv::Point dir;//方向
 	cv::Point pos;//位置
-
-	void operator= (jcBlockData& a)
-	{
-		dir = a.dir;//方向
-		pos = a.pos;//位置
-	}
+	void operator=(jcBlockData a);
 };
 
-
-struct BodyData
+class BodyData
 {
+public:
 	unsigned int _index;
-	std::vector<jcBlockData*> _keyBodyDts[BodyData_len];//各关键点，未识别的设置为NULL
+	std::vector<shared_ptr<jcBlockData>> _keyBodyDts[BodyData_len];//各关键点，未识别的设置为NULL
 	float m_fTimes;//识别的时间
 
 	cv::Point _heart;//重心

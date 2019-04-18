@@ -1,6 +1,6 @@
 #include "BodyType.h"
 
-bool skeleton::operator == (const skeleton &i)
+bool skeleton::operator == (const skeleton &i) const
 {
 	return (bodyPoint[BodyData_head] == i.bodyPoint[BodyData_head] && 
 		bodyPoint[BodyData_leftHand] == i.bodyPoint[BodyData_leftHand] &&
@@ -12,7 +12,13 @@ bool skeleton::operator == (const skeleton &i)
 }
 
 
-bool PersonData::operator==(const PersonData &i)
+bool PersonData::operator==(const PersonData &i) const
 {
 	return (index == i.index && skeletonData == i.skeletonData);
+}
+
+void jcBlockData::operator=(jcBlockData a)
+{
+	dir = a.dir; //∑ΩœÚ
+	pos = a.pos; //Œª÷√
 }

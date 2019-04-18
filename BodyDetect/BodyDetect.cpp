@@ -41,9 +41,8 @@ std::vector<cv::Point2f> skeletonBranchPoints(const cv::Mat &thinSrc, unsigned i
 					if (k < 0 || l < 0 || k>height - 1 || l>width - 1)
 					{
 						continue;
-
 					}
-					else if (*(tmp.data + tmp.step * k + l) == 1)
+					if (*(tmp.data + tmp.step * k + l) == 1)
 					{
 						count++;
 					}
@@ -100,7 +99,7 @@ vector<cv::Point2f> deleteTooNearPoints(vector<cv::Point2f> src)
 {
 	vector<cv::Point2f> dst;
 
-	if (src.size() > 0)
+	if (!src.empty())
 	{
 		dst.push_back(src[0]);
 
@@ -131,28 +130,28 @@ vector<cv::Point2f> calcBodyWide(cv::Mat &bodyThreshold, cv::Point2f Center)
 	{
 		if (bodyThreshold.at<uchar>(Center.y, i) == 0)
 		{
-			widePoint.push_back(cv::Point2f(i,Center.y));
+			widePoint.emplace_back(i,Center.y);
 			break;
 		}
 	}
 
-	if (widePoint.size() < 1)
+	if (widePoint.empty())
 	{
-		widePoint.push_back(cv::Point2f(0,Center.y));
+		widePoint.emplace_back(0,Center.y);
 	}
 
 	for (int i = (Center.x) + 1; i < bodyThreshold.size().width; i++)
 	{
 		if (bodyThreshold.at<uchar>(Center.y, i) == 0)
 		{
-			widePoint.push_back(cv::Point2f(i,Center.y));
+			widePoint.emplace_back(i,Center.y);
 			break;
 		}
 	}
 
 	if (widePoint.size() < 2)
 	{
-		widePoint.push_back(cv::Point2f(bodyThreshold.size().width - 1, Center.y));
+		widePoint.emplace_back(bodyThreshold.size().width - 1, Center.y);
 	}
 	return widePoint;
 }
@@ -161,7 +160,7 @@ vector<cv::Point2f> calcBodyWide(cv::Mat &bodyThreshold, cv::Point2f Center)
 
 
 
-skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point2f> &skeletonBranchPoints, cv::Point2f Center, cv::Mat &bodyThreshold, vector<cv::Point> contours)
+skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point2f> &skeletonBranchPoints, cv::Point2f Center, cv::Mat &bodyThreshold)
 {
 
 	skeleton skeletonData;
@@ -181,45 +180,45 @@ skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point
 	cv::Point lowestPoint(0, 0);
 	int distance = 0;
 	//推算此人的最低点（包括手臂举起的长度）（可能推算身高没有实际意义）
-	for (int i = 0; i < skeletonEndPoints.size(); i++)
+	for (auto& skeletonEndPoint : skeletonEndPoints)
 	{
-		if (skeletonEndPoints[i].y > distance)
+		if (skeletonEndPoint.y > distance)
 		{
-			lowestPoint = skeletonEndPoints[i];
+			lowestPoint = skeletonEndPoint;
 			distance = lowestPoint.y;
 		}
 	}
 
 
 	//判断交叉点的类型
-	for (int i = 0; i < skeletonBranchPoints.size(); i++)
+	for (auto& skeletonBranchPoint : skeletonBranchPoints)
 	{
 		//可能是胸部节点
-		if (skeletonBranchPoints[i].y < Center.y)
+		if (skeletonBranchPoint.y < Center.y)
 		{
-			if (abs(skeletonData.bodyPoint[BodyData_chest].x - Center.x) > abs(skeletonBranchPoints[i].x - Center.x))	//判断最有可能的胸部节点
+			if (abs(skeletonData.bodyPoint[BodyData_chest].x - Center.x) > abs(skeletonBranchPoint.x - Center.x))	//判断最有可能的胸部节点
 			{
-				skeletonData.bodyPoint[BodyData_chest] = skeletonBranchPoints[i];
+				skeletonData.bodyPoint[BodyData_chest] = skeletonBranchPoint;
 			}
 		}
 		//可能是腹部节点
 		else
 		{
 			//若腹部节点太靠下则抛弃
-			if (skeletonBranchPoints[i].y > Center.y + abs(Center.y - lowestPoint.y) * 3.0 / 5.0)
+			if (skeletonBranchPoint.y > Center.y + abs(Center.y - lowestPoint.y) * 3.0 / 5.0)
 			{
 				skeletonData.bodyPoint[BodyData_hip] = cv::Point(0, 0);
 				continue;
 			}
-			if (sqrt(pow(skeletonData.bodyPoint[BodyData_hip].x - Center.x,2)+ pow(skeletonData.bodyPoint[BodyData_hip].y - (Center.y*1.3), 2)) > sqrt(pow(skeletonBranchPoints[i].x - Center.x,2)+ pow(skeletonBranchPoints[i].y - (Center.y*1.3), 2)))	//判断最有可能的腹部节点
+			if (sqrt(pow(skeletonData.bodyPoint[BodyData_hip].x - Center.x,2)+ pow(skeletonData.bodyPoint[BodyData_hip].y - (Center.y*1.3), 2)) > sqrt(pow(
+				skeletonBranchPoint.x - Center.x,2)+ pow(skeletonBranchPoint.y - (Center.y*1.3), 2)))	//判断最有可能的腹部节点
 			{
-				skeletonData.bodyPoint[BodyData_hip] = skeletonBranchPoints[i];
+				skeletonData.bodyPoint[BodyData_hip] = skeletonBranchPoint;
 			}
 		}
 	}
 
-	vector<cv::Point2f> bodyWide;
-	bodyWide = calcBodyWide(bodyThreshold, Center);
+	vector<cv::Point2f> bodyWide = calcBodyWide(bodyThreshold, Center);
 
 
 
@@ -227,31 +226,29 @@ skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point
 	if (skeletonData.bodyPoint[BodyData_chest] != cv::Point2f(0, 0))
 	{
 		//以胸口作为判断标准
-		for (int i = 0; i < skeletonEndPoints.size(); i++)
+		for (auto& skeletonEndPoint : skeletonEndPoints)
 		{
-			if (skeletonEndPoints[i].y > skeletonData.bodyPoint[BodyData_chest].y)
+			if (skeletonEndPoint.y > skeletonData.bodyPoint[BodyData_chest].y)
 			{
 				//在身体宽度范围之外，抛弃
 				continue;
 			}
-			else
+			//找出离身体最近的点
+			if (abs(skeletonEndPoint.x - skeletonData.bodyPoint[BodyData_chest].x) < abs(skeletonData.bodyPoint[BodyData_head].x - skeletonData.bodyPoint[BodyData_chest].x))
 			{
-				//找出离身体最近的点
-				if (abs(skeletonEndPoints[i].x - skeletonData.bodyPoint[BodyData_chest].x) < abs(skeletonData.bodyPoint[BodyData_head].x - skeletonData.bodyPoint[BodyData_chest].x))
+				if (skeletonData.bodyPoint[BodyData_head] != cv::Point2f(0, 0))
 				{
-					if (skeletonData.bodyPoint[BodyData_head] != cv::Point2f(0, 0))
+					if (sqrt(pow(skeletonEndPoint.x - skeletonData.bodyPoint[BodyData_chest].x,2)+ pow(
+						skeletonEndPoint.y - skeletonData.bodyPoint[BodyData_chest].y, 2)) < sqrt(pow(skeletonData.bodyPoint[BodyData_head].x - skeletonData.bodyPoint[BodyData_chest].x, 2) + pow(skeletonData.bodyPoint[BodyData_head].y - skeletonData.bodyPoint[BodyData_chest].y, 2)))
 					{
-						if (sqrt(pow(skeletonEndPoints[i].x - skeletonData.bodyPoint[BodyData_chest].x,2)+ pow(skeletonEndPoints[i].y - skeletonData.bodyPoint[BodyData_chest].y, 2)) < sqrt(pow(skeletonData.bodyPoint[BodyData_head].x - skeletonData.bodyPoint[BodyData_chest].x, 2) + pow(skeletonData.bodyPoint[BodyData_head].y - skeletonData.bodyPoint[BodyData_chest].y, 2)))
-						{
-							skeletonData.bodyPoint[BodyData_head] = skeletonEndPoints[i];
-						}
+						skeletonData.bodyPoint[BodyData_head] = skeletonEndPoint;
 					}
-					else
-					{
-						skeletonData.bodyPoint[BodyData_head] = skeletonEndPoints[i];
-					}
-
 				}
+				else
+				{
+					skeletonData.bodyPoint[BodyData_head] = skeletonEndPoint;
+				}
+
 			}
 		}
 	}
@@ -259,29 +256,26 @@ skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point
 	else
 	{
 		//以胸口作为判断标准
-		for (int i = 0; i < skeletonEndPoints.size(); i++)
+		for (auto& skeletonEndPoint : skeletonEndPoints)
 		{
-			if (skeletonEndPoints[i].y > Center.y)
+			if (skeletonEndPoint.y > Center.y)
 			{
 				//在身体宽度范围之外，抛弃
 				continue;
 			}
-			else
+			//找出离身体最近的点
+			if (abs(skeletonEndPoint.x - Center.x) < abs(skeletonData.bodyPoint[BodyData_head].x - Center.x))
 			{
-				//找出离身体最近的点
-				if (abs(skeletonEndPoints[i].x - Center.x) < abs(skeletonData.bodyPoint[BodyData_head].x - Center.x))
+				if (skeletonData.bodyPoint[BodyData_head] != cv::Point2f(0, 0))
 				{
-					if (skeletonData.bodyPoint[BodyData_head] != cv::Point2f(0, 0))
+					if (abs(skeletonEndPoint.y - Center.y) < abs(skeletonData.bodyPoint[BodyData_head].y - Center.y))
 					{
-						if (abs(skeletonEndPoints[i].y - Center.y) < abs(skeletonData.bodyPoint[BodyData_head].y - Center.y))
-						{
-							skeletonData.bodyPoint[BodyData_head] = skeletonEndPoints[i];
-						}
+						skeletonData.bodyPoint[BodyData_head] = skeletonEndPoint;
 					}
-					else
-					{
-						skeletonData.bodyPoint[BodyData_head] = skeletonEndPoints[i];
-					}
+				}
+				else
+				{
+					skeletonData.bodyPoint[BodyData_head] = skeletonEndPoint;
 				}
 			}
 		}
@@ -314,13 +308,13 @@ skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point
 	//判断手脚（可能有误判）
 	sort(skeletonEndPoints.begin(), skeletonEndPoints.end(), sortX);
 
-	for (int i = 0; i < skeletonEndPoints.size(); i++)
+	for (auto& skeletonEndPoint : skeletonEndPoints)
 	{
-		if (skeletonEndPoints[i].y >(lowestPoint.y + Center.y) / 2.0)
+		if (skeletonEndPoint.y >(lowestPoint.y + Center.y) / 2.0)
 			continue;
-		if (skeletonEndPoints[i].x < Center.x)
+		if (skeletonEndPoint.x < Center.x)
 		{
-			skeletonData.bodyPoint[BodyData_leftHand] = skeletonEndPoints[i];
+			skeletonData.bodyPoint[BodyData_leftHand] = skeletonEndPoint;
 			break;
 		}
 	}
@@ -350,11 +344,11 @@ skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point
 	}
 
 
-	for (int i = 0; i < skeletonEndPoints.size(); i++)
+	for (auto& skeletonEndPoint : skeletonEndPoints)
 	{
-		if (skeletonEndPoints[i].y < (bodyThreshold.size().height + Center.y) / 2.0)
+		if (skeletonEndPoint.y < (bodyThreshold.size().height + Center.y) / 2.0)
 			continue;
-		skeletonData.bodyPoint[BodyData_leftFoot] = skeletonEndPoints[i];
+		skeletonData.bodyPoint[BodyData_leftFoot] = skeletonEndPoint;
 		break;
 	}
 

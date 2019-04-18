@@ -10,5 +10,5 @@ std::vector<cv::Point2f> skeletonBranchPoints(const cv::Mat &thinSrc, unsigned i
 vector<cv::Point2f> skeletonEndPoints(cv::Mat &src);
 vector<cv::Point2f> calcBodyWide(cv::Mat &bodyThreshold, cv::Point2f Center);
 
-skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point2f> &skeletonBranchPoints, cv::Point2f Center, cv::Mat &bodyThreshold, vector<cv::Point> contours);
+skeleton FromEdgePoints(vector<cv::Point2f> &skeletonEndPoints, vector<cv::Point2f> &skeletonBranchPoints, cv::Point2f Center, cv::Mat &bodyThreshold);
 bool sortCountersArea(vector<cv::Point> A, vector<cv::Point> B);
